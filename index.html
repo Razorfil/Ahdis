@@ -1,0 +1,290 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1.0"/>
+<title>AHDİS — Hasta Ekranı</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0;}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:#f4f6f8;min-height:100vh;display:flex;flex-direction:column;align-items:center;padding:24px 12px;color:#1a1a1a;}
+.app-shell{max-width:420px;width:100%;border:1px solid #e0e0e0;border-radius:20px;overflow:hidden;background:#fff;box-shadow:0 4px 24px rgba(0,0,0,.08);}
+.top-bar{background:#0F6E56;padding:16px 18px 12px;}
+.app-title{font-size:20px;font-weight:600;color:#fff;}
+.app-sub{font-size:12px;color:rgba(255,255,255,.75);margin-top:3px;}
+.conn-bar{display:flex;align-items:center;padding:6px 16px;font-size:11px;background:#f9f9f9;border-bottom:1px solid #eee;}
+.conn-dot{width:8px;height:8px;border-radius:50%;display:inline-block;margin-right:6px;}
+.tab-row{display:flex;border-bottom:1px solid #e8e8e8;background:#f9f9f9;}
+.tab-btn{flex:1;padding:11px 8px;font-size:13px;font-weight:500;border:none;background:transparent;color:#888;cursor:pointer;border-bottom:2px solid transparent;transition:all .18s;}
+.tab-btn.active{color:#0F6E56;border-bottom:2px solid #0F6E56;background:#fff;}
+.screen{display:none;padding:14px;}
+.screen.active{display:block;}
+.notice-bar{background:#EBF4FF;border:1px solid #b3d4f5;border-radius:10px;padding:9px 13px;font-size:12px;color:#185FA5;margin-bottom:12px;}
+.hospital-card{background:#fff;border:1px solid #e8e8e8;border-radius:14px;padding:14px;margin-bottom:10px;box-shadow:0 1px 4px rgba(0,0,0,.04);}
+.hosp-header{display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:10px;}
+.hosp-name{font-size:14px;font-weight:600;color:#111;}
+.hosp-address{font-size:11px;color:#888;margin-top:3px;}
+.status-badge{font-size:11px;font-weight:600;padding:3px 10px;border-radius:20px;white-space:nowrap;}
+.status-green{background:#EAF3DE;color:#3B6D11;}
+.status-amber{background:#FAEEDA;color:#854F0B;}
+.status-red{background:#FCEBEB;color:#A32D2D;}
+.fill-bar-wrap{margin-bottom:10px;}
+.fill-label{display:flex;justify-content:space-between;font-size:11px;color:#888;margin-bottom:4px;}
+.fill-track{height:7px;background:#f0f0f0;border-radius:4px;overflow:hidden;}
+.fill-bar{height:100%;border-radius:4px;transition:width .4s ease;}
+.acil-row{display:flex;gap:6px;margin-bottom:10px;}
+.acil-chip{flex:1;border-radius:10px;padding:6px 4px;text-align:center;}
+.acil-chip .av{font-size:13px;font-weight:700;}
+.acil-chip .al{font-size:10px;margin-top:1px;}
+.chip-g{background:#EAF3DE;}.chip-g .av{color:#3B6D11;}.chip-g .al{color:#5a9a1f;}
+.chip-y{background:#FAEEDA;}.chip-y .av{color:#854F0B;}.chip-y .al{color:#b36a10;}
+.chip-r{background:#FCEBEB;}.chip-r .av{color:#A32D2D;}.chip-r .al{color:#c94040;}
+.meta-row{display:flex;gap:8px;margin-bottom:10px;}
+.meta-chip{flex:1;background:#f7f7f7;border-radius:10px;padding:7px 6px;text-align:center;}
+.meta-chip .val{font-size:14px;font-weight:600;color:#111;}
+.meta-chip .lbl{font-size:10px;color:#888;margin-top:2px;}
+.action-row{display:flex;gap:8px;}
+.btn{flex:1;padding:8px 0;border-radius:10px;font-size:12px;font-weight:500;cursor:pointer;border:1px solid #ddd;background:transparent;color:#333;transition:all .15s;}
+.btn:hover{background:#f5f5f5;}
+.btn-primary{background:#0F6E56;color:#fff;border-color:#0F6E56;}
+.btn-primary:hover{background:#085041;}
+.btn-maps{background:#185FA5;color:#fff;border-color:#185FA5;}
+.btn-maps:hover{background:#0C447C;}
+.btn-maps.locked{background:#f0f0f0;color:#aaa;border-color:#ddd;cursor:not-allowed;}
+.modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,.4);display:none;align-items:center;justify-content:center;z-index:999;}
+.modal-overlay.open{display:flex;}
+.modal-box{background:#fff;border-radius:16px;padding:22px;width:320px;box-shadow:0 8px 32px rgba(0,0,0,.15);}
+.modal-title{font-size:16px;font-weight:600;margin-bottom:14px;color:#111;}
+.form-field{margin-bottom:11px;}
+.form-field label{font-size:12px;color:#666;display:block;margin-bottom:4px;}
+.form-field input{width:100%;padding:9px 12px;font-size:13px;border:1px solid #ddd;border-radius:10px;background:#f9f9f9;color:#111;outline:none;font-family:inherit;}
+.form-field input:focus{border-color:#0F6E56;background:#fff;}
+.modal-actions{display:flex;gap:8px;margin-top:14px;}
+.user-tag{display:flex;align-items:center;gap:8px;padding:8px 16px;background:#EAF3DE;border-bottom:1px solid #C0DD97;}
+.user-tag-dot{width:8px;height:8px;background:#3B6D11;border-radius:50%;}
+.user-tag-text{font-size:12px;color:#3B6D11;font-weight:500;}
+.logout-link{margin-left:auto;font-size:11px;color:#3B6D11;text-decoration:underline;cursor:pointer;background:none;border:none;}
+.queue-card{border-radius:14px;padding:16px;margin-bottom:14px;text-align:center;border:2px solid #e0e0e0;background:#f7f7f7;}
+.queue-card.acil-green{border-color:#1D9E75;background:#f0faf5;}
+.queue-card.acil-yellow{border-color:#EF9F27;background:#fffbf0;}
+.queue-card.acil-red{border-color:#E24B4A;background:#fff5f5;}
+.queue-badge{display:inline-block;font-size:11px;font-weight:700;padding:3px 12px;border-radius:20px;margin-bottom:8px;}
+.qb-green{background:#EAF3DE;color:#3B6D11;}
+.qb-yellow{background:#FAEEDA;color:#854F0B;}
+.qb-red{background:#FCEBEB;color:#A32D2D;}
+.queue-num{font-size:42px;font-weight:700;line-height:1;}
+.cn-green{color:#0F6E56;}.cn-yellow{color:#854F0B;}.cn-red{color:#A32D2D;}
+.queue-hosp{font-size:14px;font-weight:600;color:#111;margin-top:10px;}
+.queue-wait{font-size:12px;color:#666;margin-top:4px;}
+.queue-ahead{font-size:12px;color:#555;margin-top:4px;font-weight:500;}
+.queue-notif{background:#EAF3DE;border:1px solid #C0DD97;border-radius:10px;padding:9px 13px;font-size:12px;color:#3B6D11;margin-top:12px;text-align:left;}
+.disclaimer{font-size:11px;color:#aaa;text-align:center;border-top:1px solid #eee;padding:10px 14px 14px;font-style:italic;}
+</style>
+</head>
+<body>
+<div class="app-shell">
+  <div class="top-bar">
+    <div class="app-title">AHDİS</div>
+    <div class="app-sub">Ankara Hastane Doluluk İzleme Sistemi</div>
+  </div>
+  <div class="conn-bar">
+    <span class="conn-dot" id="conn-dot" style="background:#aaa;"></span>
+    <span id="conn-text" style="color:#888;">Sunucuya bağlanıyor...</span>
+  </div>
+  <div id="user-bar" style="display:none;">
+    <div class="user-tag">
+      <div class="user-tag-dot"></div>
+      <div class="user-tag-text" id="user-bar-name"></div>
+      <button class="logout-link" onclick="logout()">Çıkış Yap</button>
+    </div>
+  </div>
+  <div class="tab-row">
+    <button class="tab-btn active" id="tab-btn-doluluk" onclick="switchTab('doluluk')">Hastaneler</button>
+    <button class="tab-btn" id="tab-btn-sira" onclick="switchTab('sira')">Sıram</button>
+  </div>
+  <div id="tab-doluluk" class="screen active">
+    <div class="notice-bar" id="login-notice">Kayıt olmadan doluluk oranlarını görebilirsiniz. Sıra ve yol tarifi için giriş yapın.</div>
+    <div id="hospital-list"><div style="text-align:center;padding:30px;color:#aaa;">Yükleniyor...</div></div>
+    <button class="btn btn-primary" style="width:100%;margin-top:4px;" onclick="openModal('register')">Kayıt Ol / Giriş Yap</button>
+  </div>
+  <div id="tab-sira" class="screen">
+    <div id="sira-content"></div>
+  </div>
+  <div class="disclaimer">* Gösterilen tüm bekleme süreleri ve doluluk verileri tahminidir.</div>
+</div>
+
+<div class="modal-overlay" id="modal-register">
+  <div class="modal-box">
+    <div class="modal-title">Kayıt Ol / Giriş Yap</div>
+    <div class="form-field"><label>Ad Soyad</label><input type="text" id="inp-name" placeholder="Ahmet Yılmaz"/></div>
+    <div class="form-field"><label>TC Kimlik No</label><input type="text" id="inp-tc" placeholder="12345678901" maxlength="11"/></div>
+    <div class="modal-actions">
+      <button class="btn" onclick="closeModal('register')">İptal</button>
+      <button class="btn btn-primary" onclick="doLogin()">Giriş Yap</button>
+    </div>
+  </div>
+</div>
+
+<script>
+const HASTANE_ADRESLERI = {
+  hacettepe: 'Altındağ, Ankara 06230',
+  mamak: 'Mamak, Ankara 06450',
+  ankara: 'Bilkent, Çankaya, Ankara 06800'
+};
+const HASTANE_MAPS = {
+  hacettepe: 'https://www.google.com/maps/search/Hacettepe+Üniversitesi+Hastanesi+Ankara',
+  mamak: 'https://www.google.com/maps/search/Mamak+Devlet+Hastanesi+Ankara',
+  ankara: 'https://www.google.com/maps/search/Ankara+Şehir+Hastanesi'
+};
+const WAIT_TIMES = { green:15, yellow:25, red:30 };
+
+let hastaneler = {};
+let currentUser = null;
+let userQueue = null;
+let ws = null;
+
+function baglan() {
+  const proto = location.protocol === 'https:' ? 'wss' : 'ws';
+  ws = new WebSocket(proto + '://' + location.host);
+  ws.onopen = () => {
+    document.getElementById('conn-dot').style.background = '#1D9E75';
+    document.getElementById('conn-text').textContent = 'Canlı bağlantı aktif';
+    document.getElementById('conn-text').style.color = '#3B6D11';
+  };
+  ws.onmessage = e => {
+    const msg = JSON.parse(e.data);
+    if (msg.tip === 'guncelle') {
+      hastaneler = msg.veri;
+      renderHospitalList();
+      if (currentUser && !userQueue) tcEsles();
+      if (userQueue) renderSiraTab();
+    }
+  };
+  ws.onclose = () => {
+    document.getElementById('conn-dot').style.background = '#E24B4A';
+    document.getElementById('conn-text').textContent = 'Bağlantı kesildi, yeniden deneniyor...';
+    document.getElementById('conn-text').style.color = '#A32D2D';
+    setTimeout(baglan, 3000);
+  };
+  ws.onerror = () => ws.close();
+}
+
+function getStatus(fill) {
+  if (fill<60) return {label:'Uygun',cls:'status-green'};
+  if (fill<80) return {label:'Yoğun',cls:'status-amber'};
+  return {label:'Dolu',cls:'status-red'};
+}
+function getBarColor(fill) {
+  if (fill<60) return '#1D9E75';
+  if (fill<80) return '#EF9F27';
+  return '#E24B4A';
+}
+function calcAvgWait(h) {
+  const total = h.counts.green+h.counts.yellow+h.counts.red;
+  if (!total) return 0;
+  return Math.round((h.counts.green*WAIT_TIMES.green+h.counts.yellow*WAIT_TIMES.yellow+h.counts.red*WAIT_TIMES.red)/total);
+}
+function acilLabel(a){return a==='green'?'🟢 Yeşil':a==='yellow'?'🟡 Sarı':'🔴 Kırmızı';}
+function acilBadgeCls(a){return a==='green'?'qb-green':a==='yellow'?'qb-yellow':'qb-red';}
+function acilCardCls(a){return a==='green'?'acil-green':a==='yellow'?'acil-yellow':'acil-red';}
+function acilNumCls(a){return a==='green'?'cn-green':a==='yellow'?'cn-yellow':'cn-red';}
+
+function renderHospitalList() {
+  const ids = Object.keys(hastaneler).sort((a,b)=>hastaneler[a].fill-hastaneler[b].fill);
+  const isIn = !!currentUser;
+  document.getElementById('hospital-list').innerHTML = ids.map(id => {
+    const h = hastaneler[id];
+    const st = getStatus(h.fill);
+    const avg = calcAvgWait(h);
+    const total = h.counts.green+h.counts.yellow+h.counts.red;
+    const mapsBtn = isIn
+      ? '<button class="btn btn-maps" onclick="goMaps(\''+id+'\')">Yol Tarifi Al</button>'
+      : '<button class="btn btn-maps locked" onclick="openModal(\'register\')">Yol Tarifi Al</button>';
+    return '<div class="hospital-card">'
+      +'<div class="hosp-header"><div><div class="hosp-name">'+h.name+'</div><div class="hosp-address">'+(HASTANE_ADRESLERI[id]||'')+'</div></div><span class="status-badge '+st.cls+'">'+st.label+'</span></div>'
+      +'<div class="fill-bar-wrap"><div class="fill-label"><span>Doluluk</span><span>%'+h.fill+'</span></div><div class="fill-track"><div class="fill-bar" style="width:'+h.fill+'%;background:'+getBarColor(h.fill)+';"></div></div></div>'
+      +'<div class="acil-row"><div class="acil-chip chip-g"><div class="av">'+h.counts.green+'</div><div class="al">🟢 Yeşil</div></div><div class="acil-chip chip-y"><div class="av">'+h.counts.yellow+'</div><div class="al">🟡 Sarı</div></div><div class="acil-chip chip-r"><div class="av">'+h.counts.red+'</div><div class="al">🔴 Kırmızı</div></div></div>'
+      +'<div class="meta-row"><div class="meta-chip"><div class="val">'+avg+' dk</div><div class="lbl">Ort. Bekleme*</div></div><div class="meta-chip"><div class="val">'+total+'</div><div class="lbl">Toplam Hasta</div></div><div class="meta-chip"><div class="val">'+h.siraCount+'</div><div class="lbl">Sırada</div></div></div>'
+      +'<div class="action-row">'+mapsBtn+(isIn?'':'<button class="btn" onclick="openModal(\'register\')">Giriş Yap</button>')+'</div>'
+      +'</div>';
+  }).join('');
+}
+
+function renderSiraTab() {
+  const el = document.getElementById('sira-content');
+  if (!currentUser) {
+    el.innerHTML = '<div class="notice-bar" style="margin-top:12px;">Sıra bilgisi için giriş yapın.</div><button class="btn btn-primary" style="width:100%;margin-top:8px;" onclick="openModal(\'register\')">Giriş Yap</button>';
+    return;
+  }
+  if (!userQueue) {
+    el.innerHTML = '<div style="text-align:center;padding:30px 0;"><div style="font-size:13px;color:#888;margin-bottom:14px;">Aktif sıranız bulunmuyor.<br>Sıra numarası hastane personeli tarafından verilir.</div><button class="btn btn-primary" onclick="switchTab(\'doluluk\')">Hastane Listesine Dön</button></div>';
+    return;
+  }
+  const h = hastaneler[userQueue.hospId];
+  const myWait = WAIT_TIMES[userQueue.acil];
+  el.innerHTML = '<div class="queue-card '+acilCardCls(userQueue.acil)+'">'
+    +'<span class="queue-badge '+acilBadgeCls(userQueue.acil)+'">'+acilLabel(userQueue.acil)+'</span>'
+    +'<div style="font-size:12px;color:#888;margin-top:4px;">Sıra Numaranız</div>'
+    +'<div class="queue-num '+acilNumCls(userQueue.acil)+'">#'+userQueue.num+'</div>'
+    +'<div class="queue-hosp">'+(h?h.name:userQueue.hospId)+'</div>'
+    +'<div class="queue-wait">Tahmini bekleme: <strong>'+myWait+' dk</strong> (kişi başı)*</div>'
+    +(userQueue.oyku?'<div style="font-size:12px;color:#888;margin-top:6px;text-align:left;">Öykü: '+userQueue.oyku+'</div>':'')
+    +'<div class="queue-notif">Sıranız yaklaştığında bildirim alacaksınız.<br>6 saat içinde ayrılmazsanız sıranız otomatik iptal olur.</div>'
+    +'</div>'
+    +'<button class="btn" style="width:100%;color:#A32D2D;border-color:#F7C1C1;" onclick="ayril()">Hastaneden Ayrıldım</button>';
+}
+
+async function tcEsles() {
+  if (!currentUser) return;
+  try {
+    const r = await fetch('/api/tc-sorgula', {
+      method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({tc: currentUser.tc})
+    });
+    const d = await r.json();
+    if (d.bulundu && !userQueue) {
+      userQueue = { hospId: d.hastaneId, num: d.num, acil: d.acil, oyku: d.oyku };
+      renderSiraTab();
+      switchTab('sira');
+    }
+  } catch(e) {}
+}
+
+function ayril() { userQueue = null; renderSiraTab(); }
+
+function doLogin() {
+  const name = document.getElementById('inp-name').value.trim();
+  const tc = document.getElementById('inp-tc').value.trim();
+  if (!name){alert('Ad Soyad giriniz.');return;}
+  if (tc.length<11||isNaN(tc)){alert('Geçerli TC giriniz.');return;}
+  currentUser = {name, tc};
+  closeModal('register');
+  document.getElementById('user-bar').style.display='block';
+  document.getElementById('user-bar-name').textContent=name+' olarak giriş yapıldı';
+  document.getElementById('login-notice').style.display='none';
+  renderHospitalList();
+  tcEsles();
+}
+
+function logout() {
+  currentUser=null; userQueue=null;
+  document.getElementById('user-bar').style.display='none';
+  document.getElementById('login-notice').style.display='block';
+  switchTab('doluluk'); renderHospitalList(); renderSiraTab();
+}
+
+function openModal(id){document.getElementById('modal-'+id).classList.add('open');}
+function closeModal(id){document.getElementById('modal-'+id).classList.remove('open');}
+document.querySelectorAll('.modal-overlay').forEach(m=>{m.addEventListener('click',e=>{if(e.target===m)m.classList.remove('open');});});
+function goMaps(id){window.open(HASTANE_MAPS[id],'_blank');}
+function switchTab(name){
+  document.getElementById('tab-btn-doluluk').classList.toggle('active',name==='doluluk');
+  document.getElementById('tab-btn-sira').classList.toggle('active',name==='sira');
+  document.getElementById('tab-doluluk').classList.toggle('active',name==='doluluk');
+  document.getElementById('tab-sira').classList.toggle('active',name==='sira');
+  if(name==='sira') renderSiraTab();
+}
+
+baglan();
+</script>
+</body>
+</html>

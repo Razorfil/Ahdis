@@ -1,0 +1,334 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1.0"/>
+<title>AHDİS — Hastane Paneli</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0;}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:#f0f4f8;min-height:100vh;display:flex;flex-direction:column;align-items:center;padding:24px 12px;color:#1a1a1a;}
+.shell{max-width:600px;width:100%;border:1px solid #e0e0e0;border-radius:20px;overflow:hidden;background:#fff;box-shadow:0 4px 24px rgba(0,0,0,.08);}
+.top-bar{background:#185FA5;padding:16px 18px 12px;}
+.top-bar .title{font-size:18px;font-weight:600;color:#fff;}
+.top-bar .sub{font-size:12px;color:rgba(255,255,255,.7);margin-top:3px;}
+.conn-bar{display:flex;align-items:center;padding:6px 16px;font-size:11px;background:#f0f4f8;border-bottom:1px solid #dde3ea;}
+.conn-dot{width:8px;height:8px;border-radius:50%;display:inline-block;margin-right:6px;}
+.panel-tab-row{display:flex;border-bottom:1px solid #e8e8e8;background:#f5f7fa;}
+.panel-tab-btn{flex:1;padding:10px 8px;font-size:12px;font-weight:500;border:none;background:transparent;color:#666;cursor:pointer;border-bottom:2px solid transparent;transition:all .15s;}
+.panel-tab-btn.active{color:#185FA5;border-bottom:2px solid #185FA5;background:#fff;}
+.body{padding:14px;}
+.panel-hosp-card{background:#fff;border:1px solid #e8e8e8;border-radius:14px;padding:14px;margin-bottom:12px;}
+.panel-hosp-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;}
+.panel-hosp-name{font-size:15px;font-weight:600;color:#111;}
+.status-badge{font-size:11px;font-weight:600;padding:3px 10px;border-radius:20px;white-space:nowrap;}
+.status-green{background:#EAF3DE;color:#3B6D11;}
+.status-amber{background:#FAEEDA;color:#854F0B;}
+.status-red{background:#FCEBEB;color:#A32D2D;}
+.panel-row{display:flex;align-items:center;gap:10px;margin-bottom:10px;}
+.panel-row label{font-size:12px;color:#666;min-width:110px;}
+.panel-row input[type=number]{width:80px;padding:5px 8px;font-size:13px;border:1px solid #ddd;border-radius:8px;background:#f9f9f9;color:#111;text-align:center;outline:none;}
+.panel-row input[type=number]:focus{border-color:#185FA5;background:#fff;}
+.fill-track{height:10px;background:#f0f0f0;border-radius:4px;overflow:hidden;margin-bottom:10px;}
+.fill-bar{height:100%;border-radius:4px;transition:width .4s ease;}
+.queue-list-title{font-size:11px;font-weight:700;color:#888;border-top:1px solid #eee;padding-top:10px;margin-bottom:8px;text-transform:uppercase;letter-spacing:.5px;}
+.queue-section{margin-bottom:10px;}
+.queue-section-head{font-size:11px;font-weight:700;padding:4px 10px;border-radius:6px;margin-bottom:6px;display:inline-block;}
+.qsh-g{background:#EAF3DE;color:#3B6D11;}
+.qsh-y{background:#FAEEDA;color:#854F0B;}
+.qsh-r{background:#FCEBEB;color:#A32D2D;}
+.queue-member{display:flex;align-items:flex-start;justify-content:space-between;padding:8px 0;border-bottom:1px solid #f0f0f0;font-size:13px;}
+.queue-member:last-child{border-bottom:none;}
+.qm-info{font-weight:500;color:#111;}
+.qm-meta{font-size:11px;color:#888;margin-top:2px;}
+.qm-actions{display:flex;gap:6px;flex-shrink:0;}
+.btn{flex:1;padding:8px 0;border-radius:10px;font-size:12px;font-weight:500;cursor:pointer;border:1px solid #ddd;background:transparent;color:#333;transition:all .15s;}
+.btn:hover{background:#f5f5f5;}
+.btn-primary{background:#185FA5;color:#fff;border-color:#185FA5;}
+.btn-primary:hover{background:#0C447C;}
+.btn-green{background:#0F6E56;color:#fff;border-color:#0F6E56;}
+.btn-green:hover{background:#085041;}
+.btn-sm{padding:4px 11px;font-size:11px;font-weight:500;border-radius:8px;border:1px solid #ddd;background:transparent;cursor:pointer;color:#333;}
+.btn-sm.danger{color:#A32D2D;border-color:#F7C1C1;}
+.btn-sm.danger:hover{background:#FCEBEB;}
+.btn-sm.success{color:#3B6D11;border-color:#C0DD97;}
+.btn-sm.success:hover{background:#EAF3DE;}
+.empty-queue{font-size:12px;color:#aaa;padding:10px 0;text-align:center;}
+.login-screen{display:flex;align-items:center;justify-content:center;min-height:400px;padding:30px;}
+.login-box{width:100%;max-width:340px;}
+.login-title{font-size:18px;font-weight:600;color:#111;margin-bottom:20px;text-align:center;}
+.form-field{margin-bottom:12px;}
+.form-field label{font-size:12px;color:#666;display:block;margin-bottom:4px;}
+.form-field input,.form-field select{width:100%;padding:10px 12px;font-size:13px;border:1px solid #ddd;border-radius:10px;background:#f9f9f9;color:#111;outline:none;font-family:inherit;}
+.form-field input:focus,.form-field select:focus{border-color:#185FA5;background:#fff;}
+.hata-bar{background:#FCEBEB;border:1px solid #F7C1C1;border-radius:10px;padding:8px 12px;font-size:12px;color:#A32D2D;margin-bottom:12px;display:none;}
+.modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,.4);display:none;align-items:center;justify-content:center;z-index:999;}
+.modal-overlay.open{display:flex;}
+.modal-box{background:#fff;border-radius:16px;padding:22px;width:340px;box-shadow:0 8px 32px rgba(0,0,0,.15);max-height:90vh;overflow-y:auto;}
+.modal-title{font-size:16px;font-weight:600;margin-bottom:14px;color:#111;}
+.modal-actions{display:flex;gap:8px;margin-top:14px;}
+.acil-select-row{display:flex;gap:6px;margin-bottom:4px;}
+.acil-sel-btn{flex:1;padding:8px 4px;border-radius:8px;font-size:11px;font-weight:600;border:2px solid transparent;cursor:pointer;text-align:center;transition:all .15s;}
+.acil-sel-btn.g{background:#EAF3DE;color:#3B6D11;border-color:#EAF3DE;}
+.acil-sel-btn.g.selected{border-color:#3B6D11;}
+.acil-sel-btn.y{background:#FAEEDA;color:#854F0B;border-color:#FAEEDA;}
+.acil-sel-btn.y.selected{border-color:#854F0B;}
+.acil-sel-btn.r{background:#FCEBEB;color:#A32D2D;border-color:#FCEBEB;}
+.acil-sel-btn.r.selected{border-color:#A32D2D;}
+textarea{width:100%;padding:9px 12px;font-size:13px;border:1px solid #ddd;border-radius:10px;background:#f9f9f9;color:#111;outline:none;resize:vertical;min-height:70px;font-family:inherit;}
+textarea:focus{border-color:#185FA5;background:#fff;}
+</style>
+</head>
+<body>
+
+<div class="shell" id="login-shell">
+  <div class="top-bar">
+    <div class="title">AHDİS — Hastane Paneli</div>
+    <div class="sub">Yetkili personel girişi</div>
+  </div>
+  <div class="login-screen">
+    <div class="login-box">
+      <div class="login-title">Hastane Girişi</div>
+      <div class="hata-bar" id="hata-bar">Kimlik veya şifre hatalı.</div>
+      <div class="form-field">
+        <label>Hastane</label>
+        <select id="sel-hastane">
+          <option value="">-- Seçiniz --</option>
+          <option value="hacettepe">Hacettepe Üniversitesi Hastanesi</option>
+          <option value="mamak">Mamak Devlet Hastanesi</option>
+          <option value="ankara">Ankara Şehir Hastanesi</option>
+        </select>
+      </div>
+      <div class="form-field">
+        <label>Şifre</label>
+        <input type="password" id="inp-sifre" placeholder="Hastane şifresi" onkeydown="if(event.key==='Enter')doGiris()"/>
+      </div>
+      <button class="btn btn-primary" style="width:100%;padding:10px;margin-top:4px;" onclick="doGiris()">Giriş Yap</button>
+    </div>
+  </div>
+</div>
+
+<div class="shell" id="panel-shell" style="display:none;">
+  <div class="top-bar">
+    <div class="title" id="panel-title">AHDİS — Hastane Paneli</div>
+    <div class="sub" id="panel-sub"></div>
+  </div>
+  <div class="conn-bar">
+    <span class="conn-dot" id="conn-dot" style="background:#aaa;"></span>
+    <span id="conn-text" style="color:#888;">Bağlanıyor...</span>
+    <button onclick="cikisYap()" style="margin-left:auto;font-size:11px;color:#A32D2D;background:none;border:none;cursor:pointer;text-decoration:underline;">Çıkış Yap</button>
+  </div>
+  <div class="panel-tab-row">
+    <button class="panel-tab-btn active" id="ptab-btn-siralar" onclick="switchPanelTab('siralar')">Sıra Listesi</button>
+    <button class="panel-tab-btn" id="ptab-btn-ayar" onclick="switchPanelTab('ayar')">Doluluk Ayarları</button>
+  </div>
+  <div class="body">
+    <div id="ptab-siralar"></div>
+    <div id="ptab-ayar" style="display:none;"></div>
+  </div>
+</div>
+
+<div class="modal-overlay" id="modal-hasta">
+  <div class="modal-box">
+    <div class="modal-title">Hasta Kaydı Oluştur</div>
+    <div class="form-field"><label>Hasta Adı Soyadı</label><input type="text" id="addp-name" placeholder="Ad Soyad"/></div>
+    <div class="form-field"><label>TC Kimlik No</label><input type="text" id="addp-tc" placeholder="12345678901" maxlength="11"/></div>
+    <div class="form-field"><label>Hasta Öyküsü / Şikayeti</label><textarea id="addp-oyku" placeholder="Şikayet, semptomlar..."></textarea></div>
+    <div class="form-field">
+      <label>Aciliyet Durumu</label>
+      <div class="acil-select-row">
+        <button class="acil-sel-btn g" id="acil-g" onclick="selectAcil('green')">🟢 Yeşil<br><small>Az Acil</small></button>
+        <button class="acil-sel-btn y" id="acil-y" onclick="selectAcil('yellow')">🟡 Sarı<br><small>Orta</small></button>
+        <button class="acil-sel-btn r" id="acil-r" onclick="selectAcil('red')">🔴 Kırmızı<br><small>Çok Acil</small></button>
+      </div>
+    </div>
+    <div class="modal-actions">
+      <button class="btn" onclick="closeModal()">İptal</button>
+      <button class="btn btn-green" onclick="doHastaEkle()">Kaydet ve Sıra Ver</button>
+    </div>
+  </div>
+</div>
+
+<script>
+let oturumHastaneId = null;
+let oturumSifre = null;
+let ws = null;
+let selectedAcil = null;
+let siralar = [];
+
+(function() {
+  const p = new URLSearchParams(location.search);
+  const id = p.get('id'), sifre = p.get('sifre');
+  if (id && sifre) {
+    document.getElementById('sel-hastane').value = id;
+    document.getElementById('inp-sifre').value = sifre;
+    setTimeout(doGiris, 300);
+  }
+})();
+
+async function doGiris() {
+  const id = document.getElementById('sel-hastane').value;
+  const sifre = document.getElementById('inp-sifre').value;
+  if (!id || !sifre) { alert('Hastane ve şifre seçiniz.'); return; }
+  try {
+    const r = await fetch('/api/giris', {
+      method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({hastaneId:id, sifre})
+    });
+    const d = await r.json();
+    if (!r.ok) { document.getElementById('hata-bar').style.display='block'; return; }
+    oturumHastaneId = id;
+    oturumSifre = sifre;
+    document.getElementById('hata-bar').style.display='none';
+    document.getElementById('login-shell').style.display='none';
+    document.getElementById('panel-shell').style.display='';
+    document.getElementById('panel-title').textContent = d.name + ' — Panel';
+    document.getElementById('panel-sub').textContent = 'Giriş yapıldı';
+    baglanWS();
+    siralariYukle();
+  } catch(e) { alert('Sunucuya bağlanılamadı.'); }
+}
+
+function cikisYap() {
+  oturumHastaneId=null; oturumSifre=null;
+  if(ws) ws.close();
+  document.getElementById('login-shell').style.display='';
+  document.getElementById('panel-shell').style.display='none';
+}
+
+function baglanWS() {
+  const proto = location.protocol==='https:'?'wss':'ws';
+  ws = new WebSocket(proto+'://'+location.host);
+  ws.onopen = () => {
+    document.getElementById('conn-dot').style.background='#1D9E75';
+    document.getElementById('conn-text').textContent='Canlı bağlantı aktif';
+    document.getElementById('conn-text').style.color='#3B6D11';
+  };
+  ws.onmessage = e => {
+    const msg = JSON.parse(e.data);
+    if (msg.tip==='guncelle') {
+      const h = msg.veri[oturumHastaneId];
+      if (h) renderAyarVerisi(h);
+    }
+  };
+  ws.onclose = () => {
+    document.getElementById('conn-dot').style.background='#E24B4A';
+    document.getElementById('conn-text').textContent='Bağlantı kesildi, yeniden deneniyor...';
+    setTimeout(baglanWS, 3000);
+  };
+}
+
+async function siralariYukle() {
+  const r = await fetch('/api/siralar', {
+    method:'POST', headers:{'Content-Type':'application/json'},
+    body: JSON.stringify({hastaneId:oturumHastaneId, sifre:oturumSifre})
+  });
+  const d = await r.json();
+  siralar = d.queues || [];
+  renderSiralar();
+}
+
+function renderSiralar() {
+  const mkSection = (acil, label, shcls) => {
+    const list = siralar.filter(q=>q.acil===acil);
+    if (!list.length) return '<div class="queue-section"><span class="queue-section-head '+shcls+'">'+label+'</span><div class="empty-queue">Sırada kimse yok</div></div>';
+    return '<div class="queue-section"><span class="queue-section-head '+shcls+'">'+label+' ('+list.length+' kişi)</span>'
+      +list.map(q=>'<div class="queue-member"><div><div class="qm-info">'+q.name+' <span style="font-size:11px;color:#888;">— #'+q.num+'</span></div><div class="qm-meta">TC: '+q.tc+(q.oyku?' | '+q.oyku.substring(0,40):'')+' </div>'+(q.called?'<div style="font-size:11px;color:#185FA5;font-weight:600;">✓ Çağrıldı</div>':'')+'</div><div class="qm-actions">'+(!q.called?'<button class="btn-sm success" onclick="cagir('+q.num+')">Çağır</button>':'')+'<button class="btn-sm danger" onclick="sil('+q.num+')">Sil</button></div></div>').join('')
+      +'</div>';
+  };
+  document.getElementById('ptab-siralar').innerHTML =
+    '<div style="display:flex;justify-content:flex-end;margin-bottom:12px;"><button class="btn btn-green" style="flex:0;padding:8px 18px;" onclick="openHastaModal()">+ Hasta Ekle</button></div>'
+    +'<div class="panel-hosp-card"><div class="queue-list-title">Sıra Listesi</div>'
+    +mkSection('red','🔴 Kırmızı — Çok Acil','qsh-r')
+    +mkSection('yellow','🟡 Sarı — Orta Acil','qsh-y')
+    +mkSection('green','🟢 Yeşil — Az Acil','qsh-g')
+    +'</div>';
+}
+
+async function cagir(num) {
+  await fetch('/api/cagir',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({hastaneId:oturumHastaneId,sifre:oturumSifre,num})});
+  await siralariYukle();
+}
+async function sil(num) {
+  await fetch('/api/sil',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({hastaneId:oturumHastaneId,sifre:oturumSifre,num})});
+  await siralariYukle();
+}
+
+function openHastaModal() {
+  selectedAcil=null;
+  document.getElementById('addp-name').value='';
+  document.getElementById('addp-tc').value='';
+  document.getElementById('addp-oyku').value='';
+  ['g','y','r'].forEach(c=>document.getElementById('acil-'+c).classList.remove('selected'));
+  document.getElementById('modal-hasta').classList.add('open');
+}
+function closeModal(){document.getElementById('modal-hasta').classList.remove('open');}
+function selectAcil(a){
+  selectedAcil=a;
+  document.getElementById('acil-g').classList.toggle('selected',a==='green');
+  document.getElementById('acil-y').classList.toggle('selected',a==='yellow');
+  document.getElementById('acil-r').classList.toggle('selected',a==='red');
+}
+async function doHastaEkle() {
+  const name=document.getElementById('addp-name').value.trim();
+  const tc=document.getElementById('addp-tc').value.trim();
+  const oyku=document.getElementById('addp-oyku').value.trim();
+  if(!name){alert('Hasta adı giriniz.');return;}
+  if(tc.length<11||isNaN(tc)){alert('Geçerli TC giriniz.');return;}
+  if(!selectedAcil){alert('Aciliyet seçiniz.');return;}
+  const r = await fetch('/api/hasta-ekle',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({hastaneId:oturumHastaneId,sifre:oturumSifre,name,tc,oyku,acil:selectedAcil})});
+  const d = await r.json();
+  closeModal();
+  await siralariYukle();
+  alert('Hasta eklendi! Sıra No: #'+d.num);
+}
+
+let ayarVerisi = null;
+function renderAyarVerisi(h) {
+  ayarVerisi = h;
+  if (document.getElementById('ptab-ayar').style.display !== 'none') renderAyar();
+}
+
+function renderAyar() {
+  if (!ayarVerisi) {
+    fetch('/api/hastaneler').then(r=>r.json()).then(d=>{ ayarVerisi=d[oturumHastaneId]; renderAyar(); });
+    return;
+  }
+  const h = ayarVerisi;
+  const fill = h.fill;
+  const total = h.counts.green+h.counts.yellow+h.counts.red;
+  const getBarColor = f => f<60?'#1D9E75':f<80?'#EF9F27':'#E24B4A';
+  const getStatus = f => f<60?{l:'Uygun',c:'status-green'}:f<80?{l:'Yoğun',c:'status-amber'}:{l:'Dolu',c:'status-red'};
+  const st = getStatus(fill);
+  document.getElementById('ptab-ayar').innerHTML =
+    '<div class="panel-hosp-card">'
+    +'<div class="panel-hosp-header"><div class="panel-hosp-name">Doluluk Durumu</div><span class="status-badge '+st.c+'">'+st.l+'</span></div>'
+    +'<div style="background:#f7f7f7;border-radius:10px;padding:8px 12px;font-size:12px;color:#444;margin-bottom:10px;display:flex;justify-content:space-between;"><span>Kapasite: <strong>'+h.capacity+' yatak</strong></span><span>Doluluk: <strong>%'+fill+'</strong></span></div>'
+    +'<div class="fill-track"><div class="fill-bar" style="width:'+fill+'%;background:'+getBarColor(fill)+';"></div></div>'
+    +'<div class="panel-row"><label>Kapasite (yatak)</label><input type="number" min="1" max="2000" value="'+h.capacity+'" onchange="guncelle(\'kapasite\',this.value)"/></div>'
+    +'<div class="panel-row"><label style="color:#3B6D11;">🟢 Yeşil kişi</label><input type="number" min="0" max="9999" value="'+h.counts.green+'" onchange="guncelle(\'green\',this.value)"/></div>'
+    +'<div class="panel-row"><label style="color:#854F0B;">🟡 Sarı kişi</label><input type="number" min="0" max="9999" value="'+h.counts.yellow+'" onchange="guncelle(\'yellow\',this.value)"/></div>'
+    +'<div class="panel-row"><label style="color:#A32D2D;">🔴 Kırmızı kişi</label><input type="number" min="0" max="9999" value="'+h.counts.red+'" onchange="guncelle(\'red\',this.value)"/></div>'
+    +'<div style="background:#f7f7f7;border-radius:10px;padding:10px;font-size:12px;color:#444;margin-top:6px;">Toplam: <strong>'+total+' kişi</strong></div>'
+    +'</div>';
+}
+
+async function guncelle(tip, deger) {
+  if (tip==='kapasite') {
+    await fetch('/api/kapasite',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({hastaneId:oturumHastaneId,sifre:oturumSifre,kapasite:deger})});
+  } else {
+    await fetch('/api/sayac',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({hastaneId:oturumHastaneId,sifre:oturumSifre,acil:tip,deger})});
+  }
+}
+
+function switchPanelTab(name) {
+  document.getElementById('ptab-btn-siralar').classList.toggle('active',name==='siralar');
+  document.getElementById('ptab-btn-ayar').classList.toggle('active',name==='ayar');
+  document.getElementById('ptab-siralar').style.display=name==='siralar'?'':'none';
+  document.getElementById('ptab-ayar').style.display=name==='ayar'?'':'none';
+  if(name==='ayar') renderAyar();
+}
+
+document.getElementById('modal-hasta').addEventListener('click',e=>{if(e.target===document.getElementById('modal-hasta'))closeModal();});
+</script>
+</body>
+</html>
