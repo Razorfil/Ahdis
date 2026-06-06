@@ -184,7 +184,7 @@ KESİNLİKLE UYULACAK KURALLAR:
       'Content-Type': 'application/json',
       'Authorization': 'Bearer ' + apiKey,
       'HTTP-Referer': 'https://ahdis.onrender.com',
-      'X-Title': 'AHDİS Razorbill',
+      'X-Title': 'AHDIS Razorbill',
       'Content-Length': Buffer.byteLength(body)
     }
   };
