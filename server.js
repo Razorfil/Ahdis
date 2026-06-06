@@ -164,7 +164,7 @@ KESİNLİKLE UYULACAK KURALLAR:
    - BEKLEYEBİLİRSİN: hafif semptomlar, soğuk algınlığı başlangıcı`;
 
   const body = JSON.stringify({
-    model: 'mistralai/mistral-7b-instruct:free',
+    model: 'openrouter/auto',
     messages: [
       { role: 'system', content: systemPrompt },
       ...mesajlar.map(m => ({
