@@ -51,13 +51,10 @@ app.post('/api/hasta-ekle', (req, res) => {
   const h = HASTANE_KIMLIKLER[hastaneId];
   if (!h || h.sifre !== sifre) return res.status(401).json({ hata: 'Yetkisiz' });
   if (!['green','yellow','red'].includes(acil)) return res.status(400).json({ hata: 'Geçersiz aciliyet' });
-
-  // Sıra numarası: base + counts[acil] (panelden ayarlanan mevcut hasta sayısı)
   const base = { green: 1000, yellow: 3000, red: 5000 };
   const max  = { green: 2999, yellow: 4999, red: 6999 };
   let num = base[acil] + VERI[hastaneId].counts[acil];
   if (num > max[acil]) num = base[acil];
-
   VERI[hastaneId].queues.push({ name, tc, oyku, acil, num, called: false });
   VERI[hastaneId].counts[acil]++;
   yayinla();
@@ -87,7 +84,6 @@ app.post('/api/sil', (req, res) => {
   res.json({ ok: true });
 });
 
-// Hasta kendisi ayrıldığında çağrılan endpoint — called olsa bile sil
 app.post('/api/ayril', (req, res) => {
   const { tc } = req.body;
   if (!tc) return res.status(400).json({ ok: false });
@@ -122,28 +118,17 @@ app.post('/api/kapasite', (req, res) => {
   res.json({ ok: true });
 });
 
-// TC sorgula — önündeki kişi sayısını sıra numarasına göre hesapla
 app.post('/api/tc-sorgula', (req, res) => {
   const { tc } = req.body;
   if (!tc) return res.status(400).json({ bulundu: false });
   for (const [hastaneId, h] of Object.entries(VERI)) {
     const q = h.queues.find(x => x.tc === tc);
     if (q) {
-      // Önündeki kişi: aynı aciliyet, sıra numarası daha küçük, çağrılmamış
-      const onunde = h.queues.filter(x =>
-        x.acil === q.acil && x.num < q.num && !x.called
-      ).length;
-      // Panelden ayarlanan ama queue'ya eklenmemiş kişileri de say
+      const onunde = h.queues.filter(x => x.acil === q.acil && x.num < q.num && !x.called).length;
       const queuedCount = h.queues.filter(x => x.acil === q.acil).length;
-      const base = { green: 1000, yellow: 3000, red: 5000 };
       const extraOnunde = Math.max(0, h.counts[q.acil] - queuedCount);
-      // Toplam önündeki: queue'daki + panelden sayılan ama kayıtsız kişiler
       const toplamOnunde = onunde + extraOnunde;
-      return res.json({
-        bulundu: true, hastaneId,
-        num: q.num, acil: q.acil, oyku: q.oyku,
-        called: q.called, onunde: toplamOnunde
-      });
+      return res.json({ bulundu: true, hastaneId, num: q.num, acil: q.acil, oyku: q.oyku, called: q.called, onunde: toplamOnunde });
     }
   }
   res.json({ bulundu: false });
@@ -154,6 +139,56 @@ app.post('/api/siralar', (req, res) => {
   const h = HASTANE_KIMLIKLER[hastaneId];
   if (!h || h.sifre !== sifre) return res.status(401).json({ hata: 'Yetkisiz' });
   res.json({ queues: VERI[hastaneId].queues });
+});
+
+// ── Razorbill Maskot — Gemini API ──
+app.post('/api/maskot', async (req, res) => {
+  const { mesajlar } = req.body;
+  const apiKey = process.env.GEMINI_API_KEY;
+  if (!apiKey) return res.status(500).json({ hata: 'API anahtarı eksik' });
+
+  const systemPrompt = `Sen AHDİS uygulamasının maskotu Razorbill'sin. Razorbill, Kuzey Atlantik'te yaşayan, zeki ve çevik bir deniz kuşudur — tıpkı senin gibi keskin ve güvenilir.
+
+Görevin: Kullanıcıların semptomlarını dinleyip hastaneye gitmeleri gerekip gerekmediği konusunda genel bilgi vermek.
+
+KESİNLİKLE UYULACAK KURALLAR:
+1. Teşhis KOYMA. "Bu hastalıktır" deme. Sadece genel bilgi ver.
+2. Her yanıtın sonunda şunu ekle: "⚠️ Bu değerlendirme yapay zeka tarafından üretilmiştir ve tıbbi tavsiye niteliği taşımaz. Kesin tanı için mutlaka bir sağlık kuruluşuna başvurunuz."
+3. Acil belirtilerde (göğüs ağrısı, nefes darlığı, bilinç kaybı, felç belirtileri, şiddetli kanama) HER ZAMAN "🚨 ACİL: Hemen 112'yi arayın veya en yakın acil servise gidin!" uyarısı ver ve başka tavsiye verme.
+4. Türkçe konuş, sıcak ve sakin bir dil kullan.
+5. Yanıtların kısa ve anlaşılır olsun — 3-4 cümleyi geçme.
+6. Hastaneye gitmeyi önereceğinde şu ölçütleri kullan:
+   - ACİL (hemen git): göğüs ağrısı, nefes darlığı, bilinç kaybı, yüksek ateş (39°C+), şiddetli ağrı, kanama
+   - BUGÜN GİT: orta düzey ateş, uzun süren semptomlar (3+ gün), şiddetlenen ağrı
+   - BEKLEYEBİLİRSİN: hafif semptomlar, soğuk algınlığı başlangıcı, hafif ağrı
+7. Kullanıcı adını biliyorsan sıcak bir şekilde hitap et.`;
+
+  try {
+    const response = await fetch(
+      `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`,
+      {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          system_instruction: { parts: [{ text: systemPrompt }] },
+          contents: mesajlar.map(m => ({
+            role: m.rol === 'user' ? 'user' : 'model',
+            parts: [{ text: m.metin }]
+          })),
+          generationConfig: { temperature: 0.4, maxOutputTokens: 400 }
+        })
+      }
+    );
+    const data = await response.json();
+    if (data.candidates && data.candidates[0]) {
+      const yanit = data.candidates[0].content.parts[0].text;
+      res.json({ yanit });
+    } else {
+      res.status(500).json({ hata: 'Yanıt alınamadı' });
+    }
+  } catch (e) {
+    res.status(500).json({ hata: 'Bağlantı hatası: ' + e.message });
+  }
 });
 
 const server = http.createServer(app);
