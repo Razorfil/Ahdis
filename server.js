@@ -2,6 +2,7 @@ const express = require('express');
 const http = require('http');
 const WebSocket = require('ws');
 const path = require('path');
+const https = require('https');
 
 const app = express();
 app.use(express.json());
@@ -141,53 +142,78 @@ app.post('/api/siralar', (req, res) => {
   res.json({ queues: VERI[hastaneId].queues });
 });
 
-// ── Razorbill Maskot — Gemini API ──
+// ── Razorbill Maskot — OpenRouter API ──
 app.post('/api/maskot', async (req, res) => {
   const { mesajlar } = req.body;
-  const apiKey = process.env.GEMINI_API_KEY;
+  const apiKey = process.env.OPENROUTER_API_KEY;
   if (!apiKey) return res.status(500).json({ hata: 'API anahtarı eksik' });
 
-  const systemPrompt = `Sen AHDİS uygulamasının maskotu Razorbill'sin. Razorbill, Kuzey Atlantik'te yaşayan, zeki ve çevik bir deniz kuşudur — tıpkı senin gibi keskin ve güvenilir.
+  const systemPrompt = `Sen AHDİS uygulamasının maskotu Razorbill'sin. Razorbill, Kuzey Atlantik'te yaşayan, zeki ve çevik bir deniz kuşudur.
 
 Görevin: Kullanıcıların semptomlarını dinleyip hastaneye gitmeleri gerekip gerekmediği konusunda genel bilgi vermek.
 
 KESİNLİKLE UYULACAK KURALLAR:
-1. Teşhis KOYMA. "Bu hastalıktır" deme. Sadece genel bilgi ver.
+1. Teşhis KOYMA. Sadece genel bilgi ver.
 2. Her yanıtın sonunda şunu ekle: "⚠️ Bu değerlendirme yapay zeka tarafından üretilmiştir ve tıbbi tavsiye niteliği taşımaz. Kesin tanı için mutlaka bir sağlık kuruluşuna başvurunuz."
-3. Acil belirtilerde (göğüs ağrısı, nefes darlığı, bilinç kaybı, felç belirtileri, şiddetli kanama) HER ZAMAN "🚨 ACİL: Hemen 112'yi arayın veya en yakın acil servise gidin!" uyarısı ver ve başka tavsiye verme.
+3. Acil belirtilerde (göğüs ağrısı, nefes darlığı, bilinç kaybı, felç belirtileri, şiddetli kanama) HER ZAMAN "🚨 ACİL: Hemen 112'yi arayın!" uyarısı ver.
 4. Türkçe konuş, sıcak ve sakin bir dil kullan.
-5. Yanıtların kısa ve anlaşılır olsun — 3-4 cümleyi geçme.
-6. Hastaneye gitmeyi önereceğinde şu ölçütleri kullan:
-   - ACİL (hemen git): göğüs ağrısı, nefes darlığı, bilinç kaybı, yüksek ateş (39°C+), şiddetli ağrı, kanama
-   - BUGÜN GİT: orta düzey ateş, uzun süren semptomlar (3+ gün), şiddetlenen ağrı
-   - BEKLEYEBİLİRSİN: hafif semptomlar, soğuk algınlığı başlangıcı, hafif ağrı
-7. Kullanıcı adını biliyorsan sıcak bir şekilde hitap et.`;
+5. Yanıtların kısa ve anlaşılır olsun, 3-4 cümleyi geçme.
+6. Hastaneye gitmeyi önereceğinde:
+   - ACİL (hemen git): göğüs ağrısı, nefes darlığı, bilinç kaybı, 39C+ ateş, şiddetli kanama
+   - BUGÜN GİT: orta ateş, 3+ gün süren semptomlar, şiddetlenen ağrı
+   - BEKLEYEBİLİRSİN: hafif semptomlar, soğuk algınlığı başlangıcı`;
+
+  const body = JSON.stringify({
+    model: 'meta-llama/llama-3.1-8b-instruct:free',
+    messages: [
+      { role: 'system', content: systemPrompt },
+      ...mesajlar.map(m => ({
+        role: m.rol === 'user' ? 'user' : 'assistant',
+        content: m.metin
+      }))
+    ],
+    max_tokens: 400,
+    temperature: 0.4
+  });
+
+  const options = {
+    hostname: 'openrouter.ai',
+    path: '/api/v1/chat/completions',
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': 'Bearer ' + apiKey,
+      'HTTP-Referer': 'https://ahdis.onrender.com',
+      'X-Title': 'AHDİS Razorbill',
+      'Content-Length': Buffer.byteLength(body)
+    }
+  };
 
   try {
-    const response = await fetch(
-      `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`,
-      {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          system_instruction: { parts: [{ text: systemPrompt }] },
-          contents: mesajlar.map(m => ({
-            role: m.rol === 'user' ? 'user' : 'model',
-            parts: [{ text: m.metin }]
-          })),
-          generationConfig: { temperature: 0.4, maxOutputTokens: 400 }
-        })
-      }
-    );
-    const data = await response.json();
-    if (data.candidates && data.candidates[0]) {
-      const yanit = data.candidates[0].content.parts[0].text;
-      res.json({ yanit });
-    } else {
-      res.status(500).json({ hata: 'Yanıt alınamadı' });
-    }
-  } catch (e) {
-    res.status(500).json({ hata: 'Bağlantı hatası: ' + e.message });
+    const yanit = await new Promise((resolve, reject) => {
+      const request = https.request(options, response => {
+        let data = '';
+        response.on('data', chunk => data += chunk);
+        response.on('end', () => {
+          try {
+            const parsed = JSON.parse(data);
+            console.log('OpenRouter yanit:', JSON.stringify(parsed).substring(0, 300));
+            if (parsed.choices && parsed.choices[0]) {
+              resolve(parsed.choices[0].message.content);
+            } else {
+              reject(new Error('Beklenmedik yanit: ' + JSON.stringify(parsed)));
+            }
+          } catch(e) { reject(e); }
+        });
+      });
+      request.on('error', reject);
+      request.write(body);
+      request.end();
+    });
+    res.json({ yanit });
+  } catch(e) {
+    console.error('OpenRouter hata:', e.message);
+    res.status(500).json({ hata: e.message });
   }
 });
 
